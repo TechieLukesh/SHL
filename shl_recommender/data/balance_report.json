@@ -1,0 +1,9 @@
+{
+  "mean_recall@10": 0.2153846153846154,
+  "balance_fraction_top10_contains_K_and_P": 0.0,
+  "example_query": "Need a Java developer who is good in collaborating with external teams and stakeholders.",
+  "example_top10_K_count": 0,
+  "example_top10_P_count": 0,
+  "example_top10_K_items": [],
+  "example_top10_P_items": []
+}
