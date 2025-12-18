@@ -1,9 +1,10 @@
 import json
-from sentence_transformers import SentenceTransformer, util
 import re
 import os
 import numpy as np
 import warnings
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity as sk_cos_sim
 
 # Load data (full catalog)
 with open(os.path.join("data", "shl_assessments.json"), "r", encoding="utf-8") as f:
@@ -23,10 +24,6 @@ def is_prepackaged(item: dict) -> bool:
     return False
 
 
-# Load E5 model (lazy loaded at import)
-model = SentenceTransformer("intfloat/e5-small-v2")
-
-
 # Build document strings for the full catalog (keeps ordering aligned with raw_data)
 documents = [
     (
@@ -38,30 +35,22 @@ documents = [
 ]
 
 
-# Load or precompute document embeddings (persisted to avoid expensive startup)
+# Load precomputed document embeddings (recommended for lightweight deploys)
 EMB_PATH = os.path.join("data", "doc_embeddings.npy")
 doc_embeddings = None
+doc_embeddings_np = None
 if os.path.exists(EMB_PATH):
     try:
-        emb = np.load(EMB_PATH)
-        try:
-            import torch
-
-            doc_embeddings = torch.from_numpy(emb)
-        except Exception:
-            doc_embeddings = emb
-        print(f"Loaded {emb.shape} doc embeddings from {EMB_PATH}")
+        doc_embeddings_np = np.load(EMB_PATH)
+        doc_embeddings = doc_embeddings_np
+        print(f"Loaded {doc_embeddings_np.shape} doc embeddings from {EMB_PATH}")
     except Exception as e:
-        warnings.warn(f"Failed to load embeddings from {EMB_PATH}: {e}. Recomputing.")
+        warnings.warn(f"Failed to load embeddings from {EMB_PATH}: {e}.")
 
+# If embeddings missing, we will lazily fall back to loading the SentenceTransformer model
+_USE_TF = True
 if doc_embeddings is None:
-    doc_embeddings = model.encode(documents, convert_to_tensor=True)
-    try:
-        # save as numpy for portability
-        np.save(EMB_PATH, doc_embeddings.cpu().numpy())
-        print("Saved document embeddings to", EMB_PATH)
-    except Exception as e:
-        warnings.warn(f"Could not save embeddings to {EMB_PATH}: {e}")
+    _USE_TF = False
 
 
 # small utility helpers for skill matching and difficulty
@@ -114,15 +103,28 @@ def _difficulty_score(jd_text: str, item: dict) -> float:
     return 0.0
 
 
-def _as_tensor(x):
-    try:
-        import torch
+def _as_numpy(x):
+    if hasattr(x, "cpu"):
+        try:
+            return x.cpu().numpy()
+        except Exception:
+            pass
+    return np.asarray(x)
 
-        if isinstance(x, np.ndarray):
-            return torch.from_numpy(x)
-        return x
-    except Exception:
-        return x
+
+# Build lightweight TF-IDF index over documents to approximate query embeddings
+_tfidf_vectorizer = TfidfVectorizer(max_features=16384, stop_words="english")
+_tfidf_doc_matrix = _tfidf_vectorizer.fit_transform(documents)
+
+def _compute_query_embedding_via_tfidf(job_desc: str, top_k_docs: int = 5):
+    """Approximate a query embedding by averaging the embeddings of the top TF-IDF matching documents."""
+    if doc_embeddings is None:
+        return None
+    q_vec = _tfidf_vectorizer.transform([job_desc])
+    sims = sk_cos_sim(q_vec, _tfidf_doc_matrix)[0]
+    top_idx = np.argsort(sims)[-top_k_docs:][::-1]
+    emb_subset = doc_embeddings[top_idx]
+    return np.mean(emb_subset, axis=0)
 
 
 def _get_kept_indices(exclude_prepackaged: bool):
@@ -141,12 +143,27 @@ def recommend(job_desc: str, top_k=10, w_skill=0.6, w_embed=0.4, w_diff=0.0, exc
     if not indices:
         return []
 
-    # subset embeddings and items while preserving original indexing
-    emb_subset = doc_embeddings[indices]
-    emb_subset = _as_tensor(emb_subset)
+    # If we have precomputed doc embeddings, compute query embedding via TF-IDF fallback
+    if doc_embeddings is not None:
+        q_emb = _compute_query_embedding_via_tfidf(job_desc, top_k_docs=5)
+        if q_emb is None:
+            sim_scores = [0.0] * len(indices)
+        else:
+            emb_subset = doc_embeddings[indices]
+            q = q_emb / (np.linalg.norm(q_emb) + 1e-12)
+            E = emb_subset / (np.linalg.norm(emb_subset, axis=1, keepdims=True) + 1e-12)
+            sim_scores = (E @ q).tolist()
+    else:
+        # fallback: lazily load model and compute true embeddings (may be heavy)
+        try:
+            from sentence_transformers import SentenceTransformer, util
 
-    query_embedding = model.encode(f"query: {job_desc}", convert_to_tensor=True)
-    sim_scores = util.cos_sim(query_embedding, emb_subset)[0].cpu().tolist()
+            model = SentenceTransformer("intfloat/e5-small-v2")
+            query_embedding = model.encode(f"query: {job_desc}", convert_to_tensor=True)
+            emb_subset = model.encode([documents[i] for i in indices], convert_to_tensor=True)
+            sim_scores = util.cos_sim(query_embedding, emb_subset)[0].cpu().tolist()
+        except Exception:
+            sim_scores = [0.0] * len(indices)
 
     scored = []
     for idx, score_sim in zip(indices, sim_scores):

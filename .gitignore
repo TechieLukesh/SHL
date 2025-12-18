@@ -49,12 +49,11 @@ Thumbs.db
 *.log
 
 # Local data / heavy artifacts (do not include large generated artifacts in git)
-shl_recommender/data/*.npy
+# Note: keep `doc_embeddings.npy` committed for lightweight deployment on free instances.
 shl_recommender/data/*.pkl
 shl_recommender/data/*.csv
 shl_recommender/submission.csv
 shl_recommender/submission_final.csv
-data/*.npy
 data/*.pkl
 data/*.csv
 
