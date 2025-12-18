@@ -1,0 +1,22 @@
+# Render service template. Replace https://github.com/TechieLukesh/SHL with your repo and
+# create services via Render UI by choosing 'Create a new service from render.yaml'.
+
+services:
+  - type: web
+    name: shl-recommender-backend
+    env: python
+    plan: free
+    repo: https://github.com/TechieLukesh/SHL
+    branch: main
+    buildCommand: pip install -r shl_recommender/requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+# Optional: you can add a static site for frontend (or deploy frontend separately)
+#  - type: static
+#    name: shl-recommender-frontend
+#    repo: <YOUR_GITHUB_REPO>
+#    branch: main
+#    buildCommand: "cd frontend && npm ci && npm run build"
+#    publishCommand: "cd frontend && npm run export || true"
+#    publishPath: frontend/.next

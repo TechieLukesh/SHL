@@ -137,22 +137,15 @@ If the backend was started before you edited `recommender.py` (or other files), 
 
 ## Deployment
 
-To deploy a public API endpoint you can either push this repo to a hosting provider (Render / Heroku) or build and run the included Docker image.
+This repository includes a `render.yaml` template so you can deploy the backend on Render without Docker. Preferred deployment steps:
 
-Quick Render / Heroku instructions:
+1. Push this repo to GitHub (ensure `main` branch is up to date).
+2. In Render choose "Create a new service" → "From render.yaml" and point to this repository. The service will use the Python environment and run the build/start commands defined in `render.yaml`.
 
-- Ensure the repo is on GitHub.
-- On Render/Heroku create a new web service and point it to this repo. Use the default build (Python) or Dockerfile. Set the start command to:
+Start command used by Render:
 
 ```
 uvicorn main:app --host 0.0.0.0 --port $PORT
-```
-
-Docker example (build & run locally):
-
-```bash
-docker build -t shl-recommender:latest .
-docker run -p 8000:8000 shl-recommender:latest
 ```
 
 After deployment your public health endpoint will be `https://<your-service-url>/health` and the recommend endpoint `POST https://<your-service-url>/recommend`.
