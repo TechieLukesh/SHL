@@ -12,11 +12,13 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
-# Optional: you can add a static site for frontend (or deploy frontend separately)
-#  - type: static
-#    name: shl-recommender-frontend
-#    repo: <YOUR_GITHUB_REPO>
-#    branch: main
-#    buildCommand: "cd frontend && npm ci && npm run build"
-#    publishCommand: "cd frontend && npm run export || true"
-#    publishPath: frontend/.next
+  - type: web
+    name: shl-recommender-frontend
+    env: node
+    plan: free
+    repo: https://github.com/TechieLukesh/SHL
+    branch: main
+    buildCommand: cd frontend && npm ci && npm run build
+    startCommand: cd frontend && npm run start -- -p $PORT
+    healthCheckPath: /
+    autoDeploy: true
