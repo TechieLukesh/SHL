@@ -43,9 +43,23 @@ export default function Recommender() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds
 
-        // Use environment variable for API base if provided (set NEXT_PUBLIC_API_URL),
-        // otherwise fall back to localhost for local dev.
-        const apiBase = (process.env.NEXT_PUBLIC_API_URL as string) || "http://localhost:8000";
+        // Use environment variable for API base if provided (set NEXT_PUBLIC_API_URL).
+        // If not set, infer runtime default: when the app is running on a non-localhost
+        // host (deployed), prefer the known deployed backend; otherwise use localhost.
+        let apiBase = (process.env.NEXT_PUBLIC_API_URL as string) || "";
+        if (!apiBase) {
+          if (typeof window !== "undefined") {
+            const host = window.location.hostname;
+            // If running on a real host (not localhost/127.0.0.1), assume deployed backend
+            if (host && host !== "localhost" && host !== "127.0.0.1") {
+              apiBase = "https://shl-recommender-engine.onrender.com";
+            } else {
+              apiBase = "http://localhost:8000";
+            }
+          } else {
+            apiBase = "http://localhost:8000";
+          }
+        }
         const res = await fetch(`${apiBase.replace(/\/$/, "")}/recommend`, {
           method: "POST",
           headers: {
