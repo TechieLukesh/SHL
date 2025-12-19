@@ -20,5 +20,5 @@ services:
     branch: main
     buildCommand: cd frontend && npm ci && npm run build
     startCommand: cd frontend && npm run start -- -p $PORT
-    healthCheckPath: /
+    healthCheckPath: /healthz
     autoDeploy: true

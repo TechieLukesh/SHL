@@ -59,7 +59,7 @@ export default function Recommender() {
         try {
           const parsed = JSON.parse(body);
           body = parsed.detail || JSON.stringify(parsed);
-        } catch (e) {
+        } catch (_parseErr) {
           /* not json, keep text */
         }
         throw new Error(`Server responded with ${res.status}: ${body}`);
@@ -99,8 +99,9 @@ export default function Recommender() {
       };
 
       setResponse(normalizedData);
-    } catch (err: any) {
-      setError(err?.message || "Server error while fetching recommendations");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || "Server error while fetching recommendations");
       console.error(err);
     } finally {
       setIsLoading(false);
