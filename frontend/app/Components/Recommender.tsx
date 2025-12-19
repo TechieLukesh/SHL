@@ -14,7 +14,7 @@ type Assessment = {
   url: string;
   adaptive_support: string;
   description: string;
-  duration: number;
+  duration: number | null;
   remote_support: string;
   test_type: string[];
 };
