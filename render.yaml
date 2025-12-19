@@ -21,4 +21,7 @@ services:
     buildCommand: cd frontend && npm ci && npm run build
     startCommand: cd frontend && npm run start -- -p $PORT
     healthCheckPath: /healthz
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://shl-recommender-engine.onrender.com
     autoDeploy: true

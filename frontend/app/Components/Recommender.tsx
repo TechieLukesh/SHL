@@ -43,7 +43,10 @@ export default function Recommender() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds
 
-        const res = await fetch("http://localhost:8000/recommend", {
+        // Use environment variable for API base if provided (set NEXT_PUBLIC_API_URL),
+        // otherwise fall back to localhost for local dev.
+        const apiBase = (process.env.NEXT_PUBLIC_API_URL as string) || "http://localhost:8000";
+        const res = await fetch(`${apiBase.replace(/\/$/, "")}/recommend`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
