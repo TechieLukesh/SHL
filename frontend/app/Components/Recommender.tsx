@@ -59,7 +59,7 @@ export default function Recommender() {
         try {
           const parsed = JSON.parse(body);
           body = parsed.detail || JSON.stringify(parsed);
-        } catch (_parseErr) {
+        } catch {
           /* not json, keep text */
         }
         throw new Error(`Server responded with ${res.status}: ${body}`);
