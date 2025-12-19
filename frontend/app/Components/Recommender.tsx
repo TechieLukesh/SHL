@@ -41,7 +41,8 @@ export default function Recommender() {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds
+        const timeoutMs = 60000; // increase timeout to 60 seconds for network/deployed builds
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         // Use environment variable for API base if provided (set NEXT_PUBLIC_API_URL).
         // If not set, infer runtime default: when the app is running on a non-localhost
@@ -60,6 +61,8 @@ export default function Recommender() {
             apiBase = "http://localhost:8000";
           }
         }
+        // helpful debug log so deployed runtime shows which API base is being used
+        console.debug("Recommender: using API base:", apiBase);
         const res = await fetch(`${apiBase.replace(/\/$/, "")}/recommend`, {
           method: "POST",
           headers: {
@@ -117,9 +120,16 @@ export default function Recommender() {
 
       setResponse(normalizedData);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg || "Server error while fetching recommendations");
-      console.error(err);
+      // Handle AbortError (timeout) separately for clearer UX
+      if (err && typeof err === "object" && (err as any).name === "AbortError") {
+        const timeoutMsg = `Request timed out after ${timeoutMs / 1000}s. Backend may be unreachable.`;
+        setError(timeoutMsg);
+        console.error("Fetch aborted (timeout):", err);
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg || "Server error while fetching recommendations");
+        console.error(err);
+      }
     } finally {
       setIsLoading(false);
     }

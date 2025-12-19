@@ -9,7 +9,8 @@ services:
     repo: https://github.com/TechieLukesh/SHL
     branch: main
     buildCommand: pip install -r shl_recommender/requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Ensure the process runs from the `shl_recommender` directory so Python can import `main` and local modules
+    startCommand: cd shl_recommender && uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
   - type: web
