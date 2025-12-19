@@ -39,9 +39,10 @@ export default function Recommender() {
     setError(null);
     setResponse(null);
 
+    const timeoutMs = 60000; // increase timeout to 60 seconds for network/deployed builds
+
     try {
         const controller = new AbortController();
-        const timeoutMs = 60000; // increase timeout to 60 seconds for network/deployed builds
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         // Use environment variable for API base if provided (set NEXT_PUBLIC_API_URL).
@@ -121,7 +122,7 @@ export default function Recommender() {
       setResponse(normalizedData);
     } catch (err: unknown) {
       // Handle AbortError (timeout) separately for clearer UX
-      if (err && typeof err === "object" && (err as any).name === "AbortError") {
+      if (err && typeof err === "object" && "name" in err && String((err as { name?: unknown }).name) === "AbortError") {
         const timeoutMsg = `Request timed out after ${timeoutMs / 1000}s. Backend may be unreachable.`;
         setError(timeoutMsg);
         console.error("Fetch aborted (timeout):", err);
